@@ -1,0 +1,5 @@
+{
+  "name": "Taxi Earnings Tracker",
+  "description": "A web application for taxi drivers to track their earnings, expenses, and shift statistics, specifically tailored for services like Yandex Pro. Data is stored locally in the browser.",
+  "requestFramePermissions": []
+}
