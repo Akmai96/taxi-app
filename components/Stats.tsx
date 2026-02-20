@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Shift } from '../types';
 import { isSameDay, getStartOfWeek, getStartOfMonth } from '../utils/dateUtils';
 import { calculateShiftNet } from '../utils/calculations';
@@ -24,11 +24,10 @@ const PeriodSelector: React.FC<{ selected: Period; onSelect: (period: Period) =>
                 <button
                     key={key}
                     onClick={() => onSelect(key)}
-                    className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors w-full ${
-                        selected === key
-                            ? 'bg-white text-slate-900 dark:bg-slate-600 dark:text-white'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-gray-300 dark:hover:bg-gray-700'
-                    }`}
+                    className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors w-full ${selected === key
+                        ? 'bg-white text-slate-900 dark:bg-slate-600 dark:text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-gray-300 dark:hover:bg-gray-700'
+                        }`}
                 >
                     {label}
                 </button>
@@ -37,23 +36,37 @@ const PeriodSelector: React.FC<{ selected: Period; onSelect: (period: Period) =>
     );
 };
 
+const StatPill: React.FC<{ label: string; value: string; color?: string }> = ({ label, value, color = "bg-gray-200 dark:bg-gray-800" }) => (
+    <div className={`${color} px-4 py-2 rounded-full flex items-center shadow-sm`}>
+        <span className="text-sm font-medium whitespace-nowrap mr-2 text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="text-sm font-bold whitespace-nowrap text-slate-900 dark:text-white">{value}</span>
+    </div>
+);
+
 const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
     const [period, setPeriod] = useState<Period>('day');
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Устанавливаем текущую дату при смене периода
+    useEffect(() => {
+        setSelectedDate(new Date());
+    }, [period]);
 
     const chartData = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         if (period === 'day') {
-            const data = Array.from({ length: 7 }).map((_, i) => {
+            const data = Array.from({ length: 14 }).map((_, i) => {
                 const date = new Date(today);
                 date.setDate(today.getDate() - i);
-                return { date, net: 0, label: date.getDate().toString() };
+                return { date, net: 0, label: date.getDate().toString(), subLabel: date.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '') };
             }).reverse();
 
             shifts.forEach(shift => {
                 const shiftDate = new Date(shift.date);
-                shiftDate.setHours(0,0,0,0);
+                shiftDate.setHours(0, 0, 0, 0);
                 const dayData = data.find(d => d.date.getTime() === shiftDate.getTime());
                 if (dayData) dayData.net += calculateShiftNet(shift);
             });
@@ -61,7 +74,7 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
         }
 
         if (period === 'week') {
-            const data = Array.from({ length: 4 }).map((_, i) => {
+            const data = Array.from({ length: 8 }).map((_, i) => {
                 const date = getStartOfWeek(new Date());
                 date.setDate(date.getDate() - i * 7);
                 const weekEnd = new Date(date);
@@ -69,7 +82,8 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
                 return {
                     date: date,
                     net: 0,
-                    label: `${date.getDate()}-${weekEnd.getDate()}`
+                    label: `${date.getDate()}`,
+                    subLabel: `${weekEnd.getDate()} ${date.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')}`
                 };
             }).reverse();
 
@@ -84,13 +98,14 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
         }
 
         if (period === 'month') {
-             const data = Array.from({ length: 6 }).map((_, i) => {
+            const data = Array.from({ length: 12 }).map((_, i) => {
                 const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                date.setHours(0,0,0,0);
+                date.setHours(0, 0, 0, 0);
                 return {
                     date: date,
                     net: 0,
-                    label: date.toLocaleDateString('ru-RU', { month: 'short' })
+                    label: date.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', ''),
+                    subLabel: date.getFullYear().toString()
                 };
             }).reverse();
 
@@ -106,51 +121,112 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
 
         return [];
     }, [shifts, period]);
-    
-    const totalNetForPeriod = useMemo(() => {
-         if (period === 'day') {
-            const todayData = shifts.filter(s => isSameDay(new Date(s.date), new Date()));
-            return todayData.reduce((sum, shift) => sum + calculateShiftNet(shift), 0);
+
+    // Прокрутка к концу списка при загрузке
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
         }
-        // For week and month, we just sum up the last period's data for a relevant total.
-        if(chartData.length > 0) {
-            return chartData[chartData.length-1].net
+    }, [chartData]);
+
+    const selectedShifts = useMemo(() => {
+        if (period === 'day') {
+            return shifts.filter(s => isSameDay(new Date(s.date), selectedDate));
         }
-        return 0
-    }, [shifts, period, chartData]);
+        if (period === 'week') {
+            const start = getStartOfWeek(selectedDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            return shifts.filter(s => {
+                const d = new Date(s.date);
+                return d >= start && d <= end;
+            });
+        }
+        if (period === 'month') {
+            const start = getStartOfMonth(selectedDate);
+            const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+            return shifts.filter(s => {
+                const d = new Date(s.date);
+                return d >= start && d <= end;
+            });
+        }
+        return [];
+    }, [shifts, period, selectedDate]);
+
+    const breakdown = useMemo(() => {
+        return selectedShifts.reduce((acc, s) => {
+            acc.card += s.cardEarnings;
+            acc.cash += s.cashEarnings;
+            acc.tips += s.tips || 0;
+            acc.yandexCommission += s.yandexCommission;
+            acc.parkCommission += s.parkCommission;
+            acc.tax += s.selfEmployedTax || 0;
+            acc.fuel += s.fuelCost;
+            acc.fines += s.fines?.reduce((sum, f) => sum + f.amount, 0) ?? 0;
+            return acc;
+        }, { card: 0, cash: 0, tips: 0, yandexCommission: 0, parkCommission: 0, tax: 0, fuel: 0, fines: 0 });
+    }, [selectedShifts]);
+
+    const totalNet = useMemo(() => selectedShifts.reduce((sum, s) => sum + calculateShiftNet(s), 0), [selectedShifts]);
 
     const maxNet = useMemo(() => Math.max(1, ...chartData.map(d => d.net)), [chartData]);
-    
-    const getPeriodLabel = () => {
-        switch (period) {
-            case 'week': return `Чистыми за текущую неделю`;
-            case 'month': return `Чистыми за текущий месяц`;
-            default: return `Сегодня • ${shifts.filter(s => isSameDay(new Date(s.date), new Date())).length} смен`;
-        }
-    }
 
     return (
-        <div className="mb-8 bg-gray-100 dark:bg-gray-900/50 p-4 rounded-xl">
+        <div className="mb-8">
             <PeriodSelector selected={period} onSelect={setPeriod} />
 
-            <div className="text-center mb-6">
-                <p className="text-slate-500 dark:text-slate-400">{getPeriodLabel()}</p>
-                <p className="text-5xl font-bold tracking-tighter text-slate-900 dark:text-white">{totalNetForPeriod.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ₽</p>
+            <div className="text-center mb-8">
+                <p className="text-5xl font-bold tracking-tighter text-slate-900 dark:text-white">
+                    {totalNet.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                </p>
             </div>
 
-            <div className={`flex items-end h-48 px-2 ${period === 'month' ? 'space-x-4' : 'space-x-2'}`}>
-                {chartData.map(({ date, net, label }) => {
-                    const height = Math.max((net / maxNet) * 100, 0);
+            <div
+                ref={scrollRef}
+                className="flex items-end h-48 px-2 overflow-x-auto space-x-3 mb-8 no-scrollbar scroll-smooth"
+                style={{ scrollSnapType: 'x mandatory' }}
+            >
+                {chartData.map(({ date, net, label, subLabel }) => {
+                    const height = Math.max((net / maxNet) * 100, 2);
+                    const isSelected = isSameDay(date, selectedDate);
                     const isToday = isSameDay(date, new Date());
 
                     return (
-                        <div key={date.toISOString()} className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group" onClick={() => onPeriodSelect(period, date)}>
-                            <p className="text-xs text-slate-700 dark:text-slate-300 mb-1 transition-opacity font-semibold">{net > 0 ? net.toFixed(0) : '0'}</p>
-                            <div className={`w-full max-w-[40px] rounded transition-all ${isToday && period === 'day' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700 group-hover:bg-gray-400 dark:group-hover:bg-gray-600'}`} style={{ height: `${height}%` }}></div>
-                            <p className={`text-xs mt-2 ${isToday && period === 'day' ? 'text-blue-500 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>{label}</p>
+                        <div
+                            key={date.toISOString()}
+                            className="flex flex-col items-center flex-shrink-0 w-16 h-full justify-end cursor-pointer transition-all snap-center"
+                            onClick={() => setSelectedDate(date)}
+                        >
+                            <p className={`text-[10px] mb-1 font-bold ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                {net > 0 ? Math.round(net) : '0'}
+                            </p>
+                            <div
+                                className={`w-full rounded-xl transition-all duration-300 ${isSelected
+                                    ? 'bg-blue-500 shadow-lg shadow-blue-500/30'
+                                    : 'bg-gray-200 dark:bg-gray-800'
+                                    }`}
+                                style={{ height: `${height}%`, minHeight: '8px' }}
+                            ></div>
+                            <div className="text-center mt-2">
+                                <p className={`text-xs font-bold leading-none ${isSelected ? 'text-blue-500' : 'text-slate-600 dark:text-slate-400'}`}>{label}</p>
+                                <p className={`text-[10px] uppercase font-medium ${isSelected ? 'text-blue-500/70' : 'text-slate-400 dark:text-slate-500'}`}>{subLabel}</p>
+                            </div>
                         </div>
                     );
                 })}
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center">
+                <StatPill label="Картой" value={`${breakdown.card.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
+                <StatPill label="Наличными" value={`${breakdown.cash.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
+                <StatPill label="Чаевые" value={`${breakdown.tips.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
+                <StatPill label="Комиссия Я" value={`-${breakdown.yandexCommission.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
+                <StatPill label="Комиссия П" value={`-${breakdown.parkCommission.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
+                <StatPill label="Налог" value={`-${breakdown.tax.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
+                <StatPill label="Топливо" value={`-${breakdown.fuel.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
+                {breakdown.fines > 0 && <StatPill label="Штрафы" value={`-${breakdown.fines.toLocaleString()} ₽`} color="bg-red-50 dark:bg-red-900/30 text-red-600" />}
             </div>
         </div>
     );

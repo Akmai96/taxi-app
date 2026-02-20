@@ -36,7 +36,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, currentT
             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40" onClick={onClose}>
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-sm w-full m-4 space-y-6" onClick={e => e.stopPropagation()}>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Настройки</h2>
-                    
+
                     <div>
                         <h3 className="text-lg font-semibold mb-3 text-slate-800 dark:text-slate-200">Тема оформления</h3>
                         <div className="flex space-x-2">
@@ -44,11 +44,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, currentT
                                 <button
                                     key={theme.id}
                                     onClick={() => onThemeChange(theme.id)}
-                                    className={`w-full py-2 rounded-lg font-semibold border-2 transition-colors ${
-                                        currentTheme === theme.id 
-                                        ? 'border-green-500 text-green-600' 
-                                        : 'border-transparent bg-gray-200 dark:bg-gray-700 text-slate-700 dark:text-slate-300'
-                                    }`}
+                                    className={`w-full py-2 rounded-lg font-semibold border-2 transition-colors ${currentTheme === theme.id
+                                            ? 'border-green-500 text-green-600'
+                                            : 'border-transparent bg-gray-200 dark:bg-gray-700 text-slate-700 dark:text-slate-300'
+                                        }`}
                                 >
                                     {theme.name}
                                 </button>
@@ -57,12 +56,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, currentT
                     </div>
 
                     <div>
-                         <h3 className="text-lg font-semibold mb-3 text-slate-800 dark:text-slate-200">Помощь проекту</h3>
+                        <h3 className="text-lg font-semibold mb-3 text-slate-800 dark:text-slate-200">Приложение на экране</h3>
+                        <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-xl text-sm space-y-2">
+                            <p className="font-bold">Как добавить ярлык на телефон:</p>
+                            <p>1. Нажмите на иконку в углу (три точки или стрелка вверх).</p>
+                            <p>2. Выберите пункт <span className="text-green-500 font-bold">"Добавить на главный экран"</span>.</p>
+                            <p>3. Теперь Таксометр будет запускаться как обычное приложение!</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-lg font-semibold mb-3 text-slate-800 dark:text-slate-200">Помощь проекту</h3>
                         <a href="https://tips.yandex.ru/guest/payment/6618450" target="_blank" rel="noopener noreferrer" className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
                             Поддержать разработчика
                         </a>
                     </div>
-                    
+
                     <div className="text-center">
                         <button onClick={() => setIsTermsVisible(true)} className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
                             Правила пользования

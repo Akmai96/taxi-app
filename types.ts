@@ -20,7 +20,9 @@ export interface Shift {
     rentCost: number;
     deductRent: boolean;
     fines: Fine[];
+    tax?: number;
     selfEmployedTax: number;
+    tips?: number;
 }
 
 export enum Period {

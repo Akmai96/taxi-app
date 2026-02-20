@@ -22,6 +22,7 @@ interface ShiftFormData {
     parkCommission: number | null;
     rentCost: number | null;
     selfEmployedTax: number | null;
+    tips: number | null;
     deductRent: boolean;
     fines: Omit<Fine, 'id'>[];
 }
@@ -33,25 +34,25 @@ const formatDateForInput = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
-const InputField: React.FC<{ label: string; id: string; type?: string; value: string | number | null; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string, unit?: string, info?: string }> = 
-({ label, id, type = 'text', value, onChange, placeholder, unit, info }) => (
-    <div className="mb-4">
-        <label htmlFor={id} className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</label>
-        <div className="relative">
-            <input
-                id={id}
-                type={type}
-                value={value ?? ''}
-                onChange={onChange}
-                placeholder={placeholder || '0'}
-                className="w-full bg-gray-100 dark:bg-gray-700 text-slate-900 dark:text-slate-100 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                step={type === 'number' ? '0.01' : undefined}
-            />
-            {unit && <span className="absolute inset-y-0 right-3 flex items-center text-slate-500 dark:text-slate-400">{unit}</span>}
+const InputField: React.FC<{ label: string; id: string; type?: string; value: string | number | null; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string, unit?: string, info?: string }> =
+    ({ label, id, type = 'text', value, onChange, placeholder, unit, info }) => (
+        <div className="mb-4">
+            <label htmlFor={id} className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</label>
+            <div className="relative">
+                <input
+                    id={id}
+                    type={type}
+                    value={value ?? ''}
+                    onChange={onChange}
+                    placeholder={placeholder || '0'}
+                    className="w-full bg-gray-100 dark:bg-gray-700 text-slate-900 dark:text-slate-100 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    step={type === 'number' ? '0.01' : undefined}
+                />
+                {unit && <span className="absolute inset-y-0 right-3 flex items-center text-slate-500 dark:text-slate-400">{unit}</span>}
+            </div>
+            {info && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{info}</p>}
         </div>
-        {info && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{info}</p>}
-    </div>
-);
+    );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-white dark:bg-gray-900/50 p-4 rounded-lg mb-6">
@@ -74,6 +75,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
         parkCommission: null,
         rentCost: null,
         selfEmployedTax: null,
+        tips: null,
         deductRent: false,
         fines: []
     });
@@ -93,8 +95,9 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
                 parkCommission: initialData.parkCommission,
                 rentCost: initialData.rentCost,
                 selfEmployedTax: initialData.selfEmployedTax,
+                tips: initialData.tips || null,
                 deductRent: initialData.deductRent,
-                fines: initialData.fines.map(({id, ...rest}) => rest),
+                fines: initialData.fines.map(({ id, ...rest }) => rest),
             });
         }
     }, [initialData]);
@@ -107,7 +110,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
         }));
     };
 
-     const handleFineChange = (index: number, field: 'name' | 'amount', value: string | number) => {
+    const handleFineChange = (index: number, field: 'name' | 'amount', value: string | number) => {
         const newFines = [...formData.fines];
         newFines[index] = { ...newFines[index], [field]: value };
         setFormData(prev => ({ ...prev, fines: newFines }));
@@ -128,7 +131,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
         const commissions = (formData.yandexCommission ?? 0) + (formData.parkCommission ?? 0);
         const finesTotal = formData.fines.reduce((sum, fine) => sum + (Number(fine.amount) || 0), 0);
         const expenses = (formData.fuelCost ?? 0) + commissions + (formData.deductRent ? (formData.rentCost ?? 0) : 0) + finesTotal + (formData.selfEmployedTax ?? 0);
-        const net = gross - expenses;
+        const net = gross + (formData.tips ?? 0) - expenses;
         return { distance, rangeChange, gross, net };
     }, [formData]);
 
@@ -148,6 +151,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
             parkCommission: formData.parkCommission ?? 0,
             rentCost: formData.rentCost ?? 0,
             selfEmployedTax: formData.selfEmployedTax ?? 0,
+            tips: formData.tips ?? 0,
             deductRent: formData.deductRent,
             fines: formData.fines.map((f, i) => ({ ...f, id: initialData?.fines[i]?.id || (new Date().toISOString() + i), amount: Number(f.amount) || 0 }))
         };
@@ -169,7 +173,8 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
 
             <Section title="Доходы">
                 <InputField label="Оплата картой (безнал)" id="cardEarnings" type="number" value={formData.cardEarnings} onChange={handleChange} unit="₽" />
-                <InputField label="Оплата наличными" id="cashEarnings" type="number" value={formData.cashEarnings} onChange={handleChange} unit="₽" info={`Итого грязными: ${calculations.gross.toFixed(2)} ₽`} />
+                <InputField label="Оплата наличными" id="cashEarnings" type="number" value={formData.cashEarnings} onChange={handleChange} unit="₽" />
+                <InputField label="Чаевые" id="tips" type="number" value={formData.tips} onChange={handleChange} unit="₽" info={`Итого грязными: ${calculations.gross.toFixed(2)} ₽`} />
             </Section>
 
             <Section title="Расходы">
@@ -178,18 +183,18 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
                 <InputField label="Комиссия парка" id="parkCommission" type="number" value={formData.parkCommission} onChange={handleChange} unit="₽" />
                 <InputField label="Аренда" id="rentCost" type="number" value={formData.rentCost} onChange={handleChange} unit="₽" />
                 <InputField label="Налог СМЗ" id="selfEmployedTax" type="number" value={formData.selfEmployedTax} onChange={handleChange} unit="₽" />
-                 <div className="flex items-center mt-4">
-                    <input type="checkbox" id="deductRent" checked={formData.deductRent} onChange={handleChange} className="h-4 w-4 text-green-500 bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-green-600 focus:ring-offset-gray-800"/>
+                <div className="flex items-center mt-4">
+                    <input type="checkbox" id="deductRent" checked={formData.deductRent} onChange={handleChange} className="h-4 w-4 text-green-500 bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-green-600 focus:ring-offset-gray-800" />
                     <label htmlFor="deductRent" className="ml-2 block text-sm text-slate-800 dark:text-slate-300">Удержать аренду сегодня</label>
                 </div>
             </Section>
-            
+
             <Section title="Штрафы">
                 {formData.fines.map((fine, index) => (
                     <div key={index} className="flex items-end space-x-2 mb-2">
                         <div className="flex-grow"><InputField label="Название штрафа" id={`fine_name_${index}`} value={fine.name} onChange={(e) => handleFineChange(index, 'name', e.target.value)} placeholder="Превышение скорости" /></div>
                         <div className="w-28"><InputField label="Сумма" id={`fine_amount_${index}`} type="number" value={fine.amount} onChange={(e) => handleFineChange(index, 'amount', e.target.value)} unit="₽" /></div>
-                        <button type="button" onClick={() => removeFine(index)} className="mb-4 p-2 text-slate-500 hover:text-red-500 rounded-full"><TrashIcon className="w-5 h-5"/></button>
+                        <button type="button" onClick={() => removeFine(index)} className="mb-4 p-2 text-slate-500 hover:text-red-500 rounded-full"><TrashIcon className="w-5 h-5" /></button>
                     </div>
                 ))}
                 <button type="button" onClick={addFine} className="text-green-500 hover:text-green-400 dark:text-green-400 dark:hover:text-green-300 font-semibold text-sm">+ Добавить штраф</button>
