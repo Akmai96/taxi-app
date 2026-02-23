@@ -160,13 +160,14 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
             acc.card += s.cardEarnings;
             acc.cash += s.cashEarnings;
             acc.tips += s.tips || 0;
+            acc.bonuses += s.bonuses || 0;
             acc.yandexCommission += s.yandexCommission;
             acc.parkCommission += s.parkCommission;
             acc.tax += s.selfEmployedTax || 0;
             acc.fuel += s.fuelCost;
             acc.fines += s.fines?.reduce((sum, f) => sum + f.amount, 0) ?? 0;
             return acc;
-        }, { card: 0, cash: 0, tips: 0, yandexCommission: 0, parkCommission: 0, tax: 0, fuel: 0, fines: 0 });
+        }, { card: 0, cash: 0, tips: 0, bonuses: 0, yandexCommission: 0, parkCommission: 0, tax: 0, fuel: 0, fines: 0 });
     }, [selectedShifts]);
 
     const totalNet = useMemo(() => selectedShifts.reduce((sum, s) => sum + calculateShiftNet(s), 0), [selectedShifts]);
@@ -222,6 +223,7 @@ const Stats: React.FC<StatsProps> = ({ shifts, onPeriodSelect }) => {
                 <StatPill label="Картой" value={`${breakdown.card.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
                 <StatPill label="Наличными" value={`${breakdown.cash.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
                 <StatPill label="Чаевые" value={`${breakdown.tips.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800" />
+                {breakdown.bonuses > 0 && <StatPill label="Бонусы" value={`+${breakdown.bonuses.toLocaleString()} ₽`} color="bg-green-50 dark:bg-green-900/30 text-green-600" />}
                 <StatPill label="Комиссия Я" value={`-${breakdown.yandexCommission.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
                 <StatPill label="Комиссия П" value={`-${breakdown.parkCommission.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />
                 <StatPill label="Налог" value={`-${breakdown.tax.toLocaleString()} ₽`} color="bg-zinc-100 dark:bg-zinc-800 text-red-500" />

@@ -23,6 +23,7 @@ interface ShiftFormData {
     rentCost: number | null;
     selfEmployedTax: number | null;
     tips: number | null;
+    bonuses: number | null;
     deductRent: boolean;
     fines: Omit<Fine, 'id'>[];
 }
@@ -76,6 +77,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
         rentCost: null,
         selfEmployedTax: null,
         tips: null,
+        bonuses: null,
         deductRent: false,
         fines: []
     });
@@ -96,6 +98,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
                 rentCost: initialData.rentCost,
                 selfEmployedTax: initialData.selfEmployedTax,
                 tips: initialData.tips || null,
+                bonuses: initialData.bonuses || null,
                 deductRent: initialData.deductRent,
                 fines: initialData.fines.map(({ id, ...rest }) => rest),
             });
@@ -127,7 +130,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
     const calculations = useMemo(() => {
         const distance = (formData.odometerEnd ?? 0) - (formData.odometerStart ?? 0);
         const rangeChange = (formData.rangeStart ?? 0) - (formData.rangeEnd ?? 0);
-        const gross = (formData.cardEarnings ?? 0) + (formData.cashEarnings ?? 0);
+        const gross = (formData.cardEarnings ?? 0) + (formData.cashEarnings ?? 0) + (formData.bonuses ?? 0);
         const commissions = (formData.yandexCommission ?? 0) + (formData.parkCommission ?? 0);
         const finesTotal = formData.fines.reduce((sum, fine) => sum + (Number(fine.amount) || 0), 0);
         const expenses = (formData.fuelCost ?? 0) + commissions + (formData.deductRent ? (formData.rentCost ?? 0) : 0) + finesTotal + (formData.selfEmployedTax ?? 0);
@@ -152,6 +155,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
             rentCost: formData.rentCost ?? 0,
             selfEmployedTax: formData.selfEmployedTax ?? 0,
             tips: formData.tips ?? 0,
+            bonuses: formData.bonuses ?? 0,
             deductRent: formData.deductRent,
             fines: formData.fines.map((f, i) => ({ ...f, id: initialData?.fines[i]?.id || (new Date().toISOString() + i), amount: Number(f.amount) || 0 }))
         };
@@ -174,6 +178,7 @@ const ShiftForm: React.FC<ShiftFormProps> = ({ onSave, onCancel, initialData }) 
             <Section title="Доходы">
                 <InputField label="Оплата картой (безнал)" id="cardEarnings" type="number" value={formData.cardEarnings} onChange={handleChange} unit="₽" />
                 <InputField label="Оплата наличными" id="cashEarnings" type="number" value={formData.cashEarnings} onChange={handleChange} unit="₽" />
+                <InputField label="Бонусы" id="bonuses" type="number" value={formData.bonuses} onChange={handleChange} unit="₽" />
                 <InputField label="Чаевые" id="tips" type="number" value={formData.tips} onChange={handleChange} unit="₽" info={`Итого грязными: ${calculations.gross.toFixed(2)} ₽`} />
             </Section>
 

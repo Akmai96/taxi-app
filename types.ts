@@ -23,6 +23,7 @@ export interface Shift {
     tax?: number;
     selfEmployedTax: number;
     tips?: number;
+    bonuses?: number;
 }
 
 export enum Period {
